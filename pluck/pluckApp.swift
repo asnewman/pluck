@@ -9,9 +9,14 @@ import SwiftUI
 
 @main
 struct pluckApp: App {
+    @StateObject private var hotkeyManager = HotkeyManager()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onAppear {
+                    hotkeyManager.registerHotkey()
+                }
         }
     }
 }
