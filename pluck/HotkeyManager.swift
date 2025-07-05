@@ -34,11 +34,18 @@ class HotkeyManager: ObservableObject {
         
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { event in
             print("Key event: keyCode=\(event.keyCode), modifiers=\(event.modifierFlags)")
-            if event.modifierFlags.contains([.control, .option]) {
+            if let configManager = self.configManager,
+               !configManager.pluckKey.isEmpty,
+               event.modifierFlags.contains(configManager.pluckKey.modifierFlags) {
                 self.handleHotkeyEvent(keyCode: event.keyCode)
             }
         }
-        print("Hotkey monitoring registered for Control+Option+(1-9)")
+        
+        if let configManager = configManager {
+            print("Hotkey monitoring registered for \(configManager.pluckKey.displayText)+[character keys]")
+        } else {
+            print("Hotkey monitoring registered (no configuration manager)")
+        }
     }
     
     func unregisterHotkey() {
@@ -54,12 +61,18 @@ class HotkeyManager: ObservableObject {
             return
         }
         
-        // Find binding for this key code
-        if let binding = configManager.hotkeyBindings.first(where: { $0.keyCode == keyCode }) {
-            print("Hotkey detected for \(binding.displayText)! Focusing \(binding.appName)...")
+        // Find the character for this key code
+        guard let character = KeyMapping.shared.character(for: keyCode) else {
+            print("No character mapping found for keyCode: \(keyCode)")
+            return
+        }
+        
+        // Find binding for this character
+        if let binding = configManager.hotkeyBindings.first(where: { $0.selectorCharacter == character }) {
+            print("Hotkey detected for \(binding.displayText(with: configManager.pluckKey))! Focusing \(binding.appName)...")
             focusApp(binding: binding)
         } else {
-            print("No binding found for keyCode: \(keyCode)")
+            print("No binding found for character: '\(character)' (keyCode: \(keyCode))")
         }
     }
     

@@ -3,85 +3,104 @@ import Cocoa
 
 struct HotkeyBinding: Codable, Identifiable {
     let id = UUID()
-    var keyNumber: Int // 1-9
+    private var _selectorCharacter: String
     var appName: String
     var bundleIdentifier: String?
     
-    var keyCode: UInt16 {
-        // Map 1-9 to their respective key codes
-        switch keyNumber {
-        case 1: return 18  // kVK_ANSI_1
-        case 2: return 19  // kVK_ANSI_2
-        case 3: return 20  // kVK_ANSI_3
-        case 4: return 21  // kVK_ANSI_4
-        case 5: return 23  // kVK_ANSI_5
-        case 6: return 22  // kVK_ANSI_6
-        case 7: return 26  // kVK_ANSI_7
-        case 8: return 28  // kVK_ANSI_8
-        case 9: return 25  // kVK_ANSI_9
-        default: return 18
-        }
+    var selectorCharacter: Character {
+        get { _selectorCharacter.first ?? "a" }
+        set { _selectorCharacter = String(newValue) }
     }
     
-    var displayText: String {
-        "⌃⌥\(keyNumber)"
+    init(selectorCharacter: Character, appName: String, bundleIdentifier: String? = nil) {
+        self._selectorCharacter = String(selectorCharacter)
+        self.appName = appName
+        self.bundleIdentifier = bundleIdentifier
+    }
+    
+    var keyCode: UInt16? {
+        return KeyMapping.shared.keyCode(for: selectorCharacter)
+    }
+    
+    func displayText(with pluckKey: PluckKeyConfiguration) -> String {
+        let selectorDisplay = KeyMapping.shared.displayName(for: selectorCharacter)
+        return "\(pluckKey.displayText)+\(selectorDisplay)"
     }
 }
 
 class ConfigurationManager: ObservableObject {
     @Published var hotkeyBindings: [HotkeyBinding] = []
+    @Published var pluckKey = PluckKeyConfiguration()
     
     private let userDefaults = UserDefaults.standard
     private let bindingsKey = "HotkeyBindings"
+    private let pluckKeyKey = "PluckKeyConfiguration"
     
     init() {
-        loadBindings()
+        loadConfiguration()
         
         // Set default binding for Messages if no bindings exist
         if hotkeyBindings.isEmpty {
             hotkeyBindings = [
-                HotkeyBinding(keyNumber: 1, appName: "Messages", bundleIdentifier: "com.apple.MobileSMS")
+                HotkeyBinding(selectorCharacter: Character("m"), appName: "Messages", bundleIdentifier: "com.apple.MobileSMS")
             ]
-            saveBindings()
+            saveConfiguration()
         }
     }
     
-    func addBinding(keyNumber: Int, appName: String, bundleIdentifier: String? = nil) {
-        // Remove existing binding for this key number
-        hotkeyBindings.removeAll { $0.keyNumber == keyNumber }
+    func addBinding(selectorCharacter: Character, appName: String, bundleIdentifier: String? = nil) {
+        // Remove existing binding for this selector character
+        hotkeyBindings.removeAll { $0.selectorCharacter == selectorCharacter }
         
         // Add new binding
-        let newBinding = HotkeyBinding(keyNumber: keyNumber, appName: appName, bundleIdentifier: bundleIdentifier)
+        let newBinding = HotkeyBinding(selectorCharacter: selectorCharacter, appName: appName, bundleIdentifier: bundleIdentifier)
         hotkeyBindings.append(newBinding)
-        hotkeyBindings.sort { $0.keyNumber < $1.keyNumber }
+        hotkeyBindings.sort { $0.selectorCharacter < $1.selectorCharacter }
         
-        saveBindings()
+        saveConfiguration()
     }
     
-    func removeBinding(for keyNumber: Int) {
-        hotkeyBindings.removeAll { $0.keyNumber == keyNumber }
-        saveBindings()
+    func removeBinding(for selectorCharacter: Character) {
+        hotkeyBindings.removeAll { $0.selectorCharacter == selectorCharacter }
+        saveConfiguration()
     }
     
-    func getBinding(for keyNumber: Int) -> HotkeyBinding? {
-        return hotkeyBindings.first { $0.keyNumber == keyNumber }
+    func getBinding(for selectorCharacter: Character) -> HotkeyBinding? {
+        return hotkeyBindings.first { $0.selectorCharacter == selectorCharacter }
     }
     
-    private func saveBindings() {
+    func updatePluckKey(_ newPluckKey: PluckKeyConfiguration) {
+        pluckKey = newPluckKey
+        saveConfiguration()
+    }
+    
+    private func saveConfiguration() {
+        // Save hotkey bindings
         if let encoded = try? JSONEncoder().encode(hotkeyBindings) {
             userDefaults.set(encoded, forKey: bindingsKey)
         }
+        
+        // Save pluck key configuration
+        if let encoded = try? JSONEncoder().encode(pluckKey) {
+            userDefaults.set(encoded, forKey: pluckKeyKey)
+        }
     }
     
-    private func loadBindings() {
+    private func loadConfiguration() {
+        // Load hotkey bindings
         if let data = userDefaults.data(forKey: bindingsKey),
            let decoded = try? JSONDecoder().decode([HotkeyBinding].self, from: data) {
             hotkeyBindings = decoded
         }
+        
+        // Load pluck key configuration
+        if let data = userDefaults.data(forKey: pluckKeyKey),
+           let decoded = try? JSONDecoder().decode(PluckKeyConfiguration.self, from: data) {
+            pluckKey = decoded
+        }
     }
     
-    func getAvailableKeyNumbers() -> [Int] {
-        let usedNumbers = Set(hotkeyBindings.map { $0.keyNumber })
-        return Array(1...9).filter { !usedNumbers.contains($0) }
+    func isCharacterAvailable(_ character: Character) -> Bool {
+        return !hotkeyBindings.contains { $0.selectorCharacter == character }
     }
 }

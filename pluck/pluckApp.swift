@@ -67,7 +67,7 @@ struct pluckApp: App {
         let hostingController = NSHostingController(rootView: configView)
         
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 400),
+            contentRect: NSRect(x: 0, y: 0, width: 600, height: 550),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false

@@ -2,18 +2,79 @@ import SwiftUI
 
 struct ConfigurationView: View {
     @ObservedObject var configManager: ConfigurationManager
-    @State private var selectedKeyNumber = 1
+    @State private var selectedSelectorCharacter: Character = "a"
+    @State private var selectorCharacterInput = ""
     @State private var selectedAppName = ""
     @State private var showingAppPicker = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Hotkey Configuration")
+            Text("Pluck Configuration")
                 .font(.title2)
                 .bold()
             
-            Text("Configure hotkeys to quickly open your favorite apps")
+            Text("Configure your pluck key and hotkeys to quickly open apps")
                 .foregroundColor(.secondary)
+            
+            // Pluck Key Configuration
+            GroupBox("Pluck Key Configuration") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Choose modifier keys for your pluck key:")
+                        .font(.headline)
+                    
+                    HStack(spacing: 20) {
+                        Toggle("⌃ Control", isOn: Binding(
+                            get: { configManager.pluckKey.useControl },
+                            set: { newValue in
+                                var newPluckKey = configManager.pluckKey
+                                newPluckKey.useControl = newValue
+                                configManager.updatePluckKey(newPluckKey)
+                            }
+                        ))
+                        
+                        Toggle("⌥ Option", isOn: Binding(
+                            get: { configManager.pluckKey.useOption },
+                            set: { newValue in
+                                var newPluckKey = configManager.pluckKey
+                                newPluckKey.useOption = newValue
+                                configManager.updatePluckKey(newPluckKey)
+                            }
+                        ))
+                        
+                        Toggle("⇧ Shift", isOn: Binding(
+                            get: { configManager.pluckKey.useShift },
+                            set: { newValue in
+                                var newPluckKey = configManager.pluckKey
+                                newPluckKey.useShift = newValue
+                                configManager.updatePluckKey(newPluckKey)
+                            }
+                        ))
+                        
+                        Toggle("⌘ Command", isOn: Binding(
+                            get: { configManager.pluckKey.useCommand },
+                            set: { newValue in
+                                var newPluckKey = configManager.pluckKey
+                                newPluckKey.useCommand = newValue
+                                configManager.updatePluckKey(newPluckKey)
+                            }
+                        ))
+                    }
+                    
+                    if configManager.pluckKey.isEmpty {
+                        Text("Please select at least one modifier key")
+                            .foregroundColor(.red)
+                            .font(.caption)
+                    } else {
+                        Text("Current pluck key: \(configManager.pluckKey.displayText)")
+                            .font(.system(.body, design: .monospaced))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.green.opacity(0.1))
+                            .cornerRadius(6)
+                    }
+                }
+                .padding()
+            }
             
             // Current bindings list
             GroupBox("Current Hotkeys") {
@@ -23,36 +84,39 @@ struct ConfigurationView: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding()
                 } else {
-                    LazyVStack(spacing: 8) {
-                        ForEach(configManager.hotkeyBindings) { binding in
-                            HStack {
-                                Text(binding.displayText)
-                                    .font(.system(.body, design: .monospaced))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color.blue.opacity(0.1))
-                                    .cornerRadius(6)
-                                
-                                Text("→")
-                                    .foregroundColor(.secondary)
-                                
-                                Text(binding.appName)
-                                    .bold()
-                                
-                                Spacer()
-                                
-                                Button("Remove") {
-                                    configManager.removeBinding(for: binding.keyNumber)
+                    ScrollView {
+                        VStack(spacing: 8) {
+                            ForEach(configManager.hotkeyBindings) { binding in
+                                HStack {
+                                    Text(binding.displayText(with: configManager.pluckKey))
+                                        .font(.system(.body, design: .monospaced))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.blue.opacity(0.1))
+                                        .cornerRadius(6)
+                                    
+                                    Text("→")
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text(binding.appName)
+                                        .bold()
+                                    
+                                    Spacer()
+                                    
+                                    Button("Remove") {
+                                        configManager.removeBinding(for: binding.selectorCharacter)
+                                    }
+                                    .foregroundColor(.red)
                                 }
-                                .foregroundColor(.red)
+                                .padding(.horizontal)
+                                .padding(.vertical, 8)
+                                .background(Color.gray.opacity(0.05))
+                                .cornerRadius(8)
                             }
-                            .padding(.horizontal)
-                            .padding(.vertical, 8)
-                            .background(Color.gray.opacity(0.05))
-                            .cornerRadius(8)
                         }
+                        .padding()
                     }
-                    .padding()
+                    .frame(minHeight: 100, maxHeight: 200)
                 }
             }
             
@@ -60,14 +124,25 @@ struct ConfigurationView: View {
             GroupBox("Add New Hotkey") {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text("Key:")
-                        Picker("Key Number", selection: $selectedKeyNumber) {
-                            ForEach(configManager.getAvailableKeyNumbers(), id: \.self) { number in
-                                Text("⌃⌥\(number)").tag(number)
+                        Text("Selector Key:")
+                        TextField("Press any key (a-z, 0-9, etc.)", text: $selectorCharacterInput)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .frame(width: 200)
+                            .onChange(of: selectorCharacterInput) { newValue in
+                                if let firstChar = newValue.lowercased().first,
+                                   KeyMapping.shared.isValidSelectorCharacter(firstChar) {
+                                    selectedSelectorCharacter = firstChar
+                                    selectorCharacterInput = String(firstChar)
+                                } else if newValue.count > 1 {
+                                    selectorCharacterInput = String(selectorCharacterInput.prefix(1))
+                                }
                             }
+                        
+                        if !selectorCharacterInput.isEmpty {
+                            Text("Preview: \(configManager.pluckKey.displayText)+\(KeyMapping.shared.displayName(for: selectedSelectorCharacter))")
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundColor(.blue)
                         }
-                        .pickerStyle(MenuPickerStyle())
-                        .disabled(configManager.getAvailableKeyNumbers().isEmpty)
                         
                         Spacer()
                     }
@@ -83,40 +158,37 @@ struct ConfigurationView: View {
                     }
                     
                     HStack {
+                        if !selectorCharacterInput.isEmpty && !configManager.isCharacterAvailable(selectedSelectorCharacter) {
+                            Text("Key '\(selectedSelectorCharacter)' is already in use")
+                                .foregroundColor(.orange)
+                                .font(.caption)
+                        }
+                        
                         Spacer()
+                        
                         Button("Add Hotkey") {
-                            if !selectedAppName.isEmpty {
+                            if !selectedAppName.isEmpty && !selectorCharacterInput.isEmpty {
                                 configManager.addBinding(
-                                    keyNumber: selectedKeyNumber,
+                                    selectorCharacter: selectedSelectorCharacter,
                                     appName: selectedAppName
                                 )
                                 selectedAppName = ""
-                                if let nextAvailable = configManager.getAvailableKeyNumbers().first {
-                                    selectedKeyNumber = nextAvailable
-                                }
+                                selectorCharacterInput = ""
                             }
                         }
-                        .disabled(selectedAppName.isEmpty || configManager.getAvailableKeyNumbers().isEmpty)
+                        .disabled(selectedAppName.isEmpty || 
+                                selectorCharacterInput.isEmpty || 
+                                configManager.pluckKey.isEmpty ||
+                                !configManager.isCharacterAvailable(selectedSelectorCharacter))
                     }
                 }
                 .padding()
             }
             
-            if configManager.getAvailableKeyNumbers().isEmpty {
-                Text("All hotkey slots (1-9) are in use")
-                    .foregroundColor(.orange)
-                    .font(.caption)
-            }
-            
             Spacer()
         }
         .padding()
-        .frame(width: 500, height: 400)
-        .onAppear {
-            if let firstAvailable = configManager.getAvailableKeyNumbers().first {
-                selectedKeyNumber = firstAvailable
-            }
-        }
+        .frame(width: 600, height: 550)
     }
     
     private func showAppPicker() {
