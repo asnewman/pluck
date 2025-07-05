@@ -10,13 +10,19 @@ import SwiftUI
 @main
 struct pluckApp: App {
     @StateObject private var hotkeyManager: HotkeyManager
+    @StateObject private var configManager = ConfigurationManager()
+    @State private var configWindowController: NSWindowController?
     
     init() {
         let manager = HotkeyManager()
+        let config = ConfigurationManager()
+        
         self._hotkeyManager = StateObject(wrappedValue: manager)
+        self._configManager = StateObject(wrappedValue: config)
         
         // Register hotkey when app starts
         DispatchQueue.main.async {
+            manager.setConfigurationManager(config)
             manager.registerHotkey()
         }
     }
@@ -24,7 +30,7 @@ struct pluckApp: App {
     var body: some Scene {
         MenuBarExtra("Pluck", systemImage: "keyboard") {
             Button(action: {
-                // TODO: Add configuration functionality
+                showConfigurationWindow()
             }) {
                 Label("Configure", systemImage: "gearshape")
             }
@@ -50,5 +56,33 @@ struct pluckApp: App {
             .keyboardShortcut("q", modifiers: .command)
         }
         .menuBarExtraStyle(.menu)
+    }
+    
+    private func showConfigurationWindow() {
+        // Close existing window if open
+        configWindowController?.close()
+        
+        // Create new configuration window
+        let configView = ConfigurationView(configManager: configManager)
+        let hostingController = NSHostingController(rootView: configView)
+        
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 400),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        
+        window.title = "Pluck Configuration"
+        window.contentViewController = hostingController
+        window.center()
+        window.setFrameAutosaveName("ConfigurationWindow")
+        
+        configWindowController = NSWindowController(window: window)
+        configWindowController?.showWindow(nil)
+        
+        // Bring window to front
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
     }
 }
