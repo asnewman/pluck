@@ -3,7 +3,8 @@ import SwiftUI
 import ApplicationServices
 
 class HotkeyManager: ObservableObject {
-    private var eventMonitor: Any?
+    private var globalEventMonitor: Any?
+    private var localEventMonitor: Any?
     private var configManager: ConfigurationManager?
     
     func setConfigurationManager(_ configManager: ConfigurationManager) {
@@ -32,13 +33,26 @@ class HotkeyManager: ObservableObject {
             }
         }
         
-        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { event in
-            print("Key event: keyCode=\(event.keyCode), modifiers=\(event.modifierFlags)")
+        // Global monitor for when other apps are focused
+        globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { event in
+            print("Global key event: keyCode=\(event.keyCode), modifiers=\(event.modifierFlags)")
             if let configManager = self.configManager,
                !configManager.pluckKey.isEmpty,
                event.modifierFlags.contains(configManager.pluckKey.modifierFlags) {
                 self.handleHotkeyEvent(keyCode: event.keyCode)
             }
+        }
+        
+        // Local monitor for when our own app is focused
+        localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+            print("Local key event: keyCode=\(event.keyCode), modifiers=\(event.modifierFlags)")
+            if let configManager = self.configManager,
+               !configManager.pluckKey.isEmpty,
+               event.modifierFlags.contains(configManager.pluckKey.modifierFlags) {
+                self.handleHotkeyEvent(keyCode: event.keyCode)
+                return nil // Consume the event to prevent further processing
+            }
+            return event // Let other events pass through
         }
         
         if let configManager = configManager {
@@ -49,9 +63,14 @@ class HotkeyManager: ObservableObject {
     }
     
     func unregisterHotkey() {
-        if let eventMonitor = eventMonitor {
-            NSEvent.removeMonitor(eventMonitor)
-            self.eventMonitor = nil
+        if let globalEventMonitor = globalEventMonitor {
+            NSEvent.removeMonitor(globalEventMonitor)
+            self.globalEventMonitor = nil
+        }
+        
+        if let localEventMonitor = localEventMonitor {
+            NSEvent.removeMonitor(localEventMonitor)
+            self.localEventMonitor = nil
         }
     }
     
