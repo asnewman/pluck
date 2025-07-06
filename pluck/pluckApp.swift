@@ -28,7 +28,7 @@ struct pluckApp: App {
     }
     
     var body: some Scene {
-        MenuBarExtra("Pluck", systemImage: "keyboard") {
+        MenuBarExtra("Pluck", image: "MenuBarIcon") {
             Button(action: {
                 showConfigurationWindow()
             }) {
