@@ -44,9 +44,10 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 - Organized sections with clear labels and logical grouping
 
 **pluckApp.swift**
-- Menu bar app entry point
+- Menu bar app entry point with custom "P" icon
 - Integrates configuration window
 - Manages hotkey manager lifecycle
+- LSUIElement configuration hides Dock icon (menu bar only)
 
 ## Key Terminology
 
@@ -58,7 +59,9 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 
 - Fully customizable pluck key (any combination of Control, Option, Shift, Command)
 - Character-based selectors (supports all keyboard characters: a-z, 0-9, punctuation, space)
-- Menu bar integration with native macOS styling and icons
+- Menu bar only operation (no Dock icon) with custom "P" logo
+- Custom rounded corner app icons with proper sizing and padding
+- Template-based menu bar icon that adapts to system theme
 - Persistent configuration storage with JSON encoding
 - Real-time conflict detection and validation
 - Comprehensive hotkey monitoring (works in all app contexts)
@@ -76,6 +79,8 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 - Character storage uses String internally for Codable compliance
 - Default pluck key: Control + Option (⌃⌥)
 - Event consumption prevents UI interference in local monitoring
+- LSUIElement = YES hides app from Dock, keeping only menu bar presence
+- Custom MenuBarIcon.imageset with 1x/2x template rendering for theme adaptation
 
 ## Build Requirements
 
@@ -92,6 +97,9 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 - **Comprehensive Character Support**: Full keyboard character mapping
 - **Dynamic Pluck Key**: Real-time modifier combination updates
 - **Robust App Activation**: AppleScript with NSWorkspace fallbacks
+- **Custom App Icons**: Rounded corner icons with ImageMagick processing and proper sizing
+- **Menu Bar Only Operation**: LSUIElement configuration for clean menu bar utility behavior
+- **Custom Menu Bar Icon**: Template-rendered "P" logo that adapts to system themes
 
 ## Future Enhancements
 
