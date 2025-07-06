@@ -8,21 +8,22 @@ struct ConfigurationView: View {
     @State private var showingAppPicker = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 16) {
             Text("Pluck Configuration")
                 .font(.title2)
                 .bold()
             
             Text("Configure your pluck key and hotkeys to quickly open apps")
                 .foregroundColor(.secondary)
+                .padding(.bottom, 4)
             
             // Pluck Key Configuration
             GroupBox("Pluck Key Configuration") {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 16) {
                     Text("Choose modifier keys for your pluck key:")
                         .font(.headline)
                     
-                    HStack(spacing: 20) {
+                    HStack(spacing: 16) {
                         Toggle("⌃ Control", isOn: Binding(
                             get: { configManager.pluckKey.useControl },
                             set: { newValue in
@@ -64,16 +65,18 @@ struct ConfigurationView: View {
                         Text("Please select at least one modifier key")
                             .foregroundColor(.red)
                             .font(.caption)
+                            .padding(.top, 4)
                     } else {
                         Text("Current pluck key: \(configManager.pluckKey.displayText)")
                             .font(.system(.body, design: .monospaced))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
                             .background(Color.green.opacity(0.1))
-                            .cornerRadius(6)
+                            .cornerRadius(8)
+                            .padding(.top, 4)
                     }
                 }
-                .padding()
+                .padding(16)
             }
             
             // Current bindings list
@@ -82,16 +85,16 @@ struct ConfigurationView: View {
                     Text("No hotkeys configured")
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
-                        .padding()
+                        .padding(.vertical, 24)
                 } else {
                     ScrollView {
                         VStack(spacing: 8) {
                             ForEach(configManager.hotkeyBindings) { binding in
-                                HStack {
+                                HStack(spacing: 12) {
                                     Text(binding.displayText(with: configManager.pluckKey))
                                         .font(.system(.body, design: .monospaced))
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
                                         .background(Color.blue.opacity(0.1))
                                         .cornerRadius(6)
                                     
@@ -108,52 +111,64 @@ struct ConfigurationView: View {
                                     }
                                     .foregroundColor(.red)
                                 }
-                                .padding(.horizontal)
-                                .padding(.vertical, 8)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
                                 .background(Color.gray.opacity(0.05))
                                 .cornerRadius(8)
                             }
                         }
-                        .padding()
+                        .padding(12)
                     }
-                    .frame(minHeight: 100, maxHeight: 200)
+                    .frame(minHeight: 100, maxHeight: 180)
                 }
             }
             
             // Add new binding
             GroupBox("Add New Hotkey") {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text("Selector Key:")
-                        TextField("Press any key (a-z, 0-9, etc.)", text: $selectorCharacterInput)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .frame(width: 200)
-                            .onChange(of: selectorCharacterInput) { newValue in
-                                if let firstChar = newValue.lowercased().first,
-                                   KeyMapping.shared.isValidSelectorCharacter(firstChar) {
-                                    selectedSelectorCharacter = firstChar
-                                    selectorCharacterInput = String(firstChar)
-                                } else if newValue.count > 1 {
-                                    selectorCharacterInput = String(selectorCharacterInput.prefix(1))
+                            .font(.headline)
+                        
+                        HStack(spacing: 12) {
+                            TextField("Press any key (a-z, 0-9, etc.)", text: $selectorCharacterInput)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .frame(width: 200)
+                                .onChange(of: selectorCharacterInput) { newValue in
+                                    if let firstChar = newValue.lowercased().first,
+                                       KeyMapping.shared.isValidSelectorCharacter(firstChar) {
+                                        selectedSelectorCharacter = firstChar
+                                        selectorCharacterInput = String(firstChar)
+                                    } else if newValue.count > 1 {
+                                        selectorCharacterInput = String(selectorCharacterInput.prefix(1))
+                                    }
                                 }
+                            
+                            if !selectorCharacterInput.isEmpty {
+                                Text("Preview: \(configManager.pluckKey.displayText)+\(KeyMapping.shared.displayName(for: selectedSelectorCharacter))")
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundColor(.blue)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(4)
                             }
-                        
-                        if !selectorCharacterInput.isEmpty {
-                            Text("Preview: \(configManager.pluckKey.displayText)+\(KeyMapping.shared.displayName(for: selectedSelectorCharacter))")
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(.blue)
+                            
+                            Spacer()
                         }
-                        
-                        Spacer()
                     }
                     
-                    HStack {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text("App:")
-                        TextField("Application name", text: $selectedAppName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .font(.headline)
                         
-                        Button("Choose App") {
-                            showAppPicker()
+                        HStack(spacing: 12) {
+                            TextField("Application name", text: $selectedAppName)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                            
+                            Button("Choose App") {
+                                showAppPicker()
+                            }
                         }
                     }
                     
@@ -182,13 +197,13 @@ struct ConfigurationView: View {
                                 !configManager.isCharacterAvailable(selectedSelectorCharacter))
                     }
                 }
-                .padding()
+                .padding(16)
             }
             
             Spacer()
         }
-        .padding()
-        .frame(width: 600, height: 550)
+        .padding(20)
+        .frame(width: 600, height: 580)
     }
     
     private func showAppPicker() {
