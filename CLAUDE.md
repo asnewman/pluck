@@ -28,16 +28,20 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 - Default binding: Ctrl+Option+M → Messages
 
 **HotkeyManager.swift**
-- Registers global event monitor for key combinations
-- Handles accessibility permissions checking
-- Focuses/launches applications using AppleScript and NSWorkspace
-- Maps key events to configured bindings
+- Registers both global and local event monitors for comprehensive coverage
+- Global monitor: captures hotkeys when other apps are focused
+- Local monitor: captures hotkeys when own app/config window is focused
+- Handles accessibility permissions checking with user guidance
+- Focuses/launches applications using AppleScript and NSWorkspace fallbacks
+- Maps key events to configured bindings with dynamic pluck key support
 
 **ConfigurationView.swift**
 - SwiftUI interface for managing pluck key and hotkey bindings
-- Real-time preview of hotkey combinations
-- App picker integration
+- Real-time preview of hotkey combinations with styled display
+- App picker integration with native file dialog
 - Conflict detection for duplicate selectors
+- Polished UI with consistent spacing and visual hierarchy
+- Organized sections with clear labels and logical grouping
 
 **pluckApp.swift**
 - Menu bar app entry point
@@ -52,21 +56,26 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 
 ## Features
 
-- Fully customizable pluck key (any combination of modifiers)
-- Character-based selectors (supports all keyboard characters)
-- Menu bar integration with native macOS styling
-- Persistent configuration storage
-- Real-time conflict detection
-- AppleScript-based app activation for reliability
-- Accessibility permissions handling
+- Fully customizable pluck key (any combination of Control, Option, Shift, Command)
+- Character-based selectors (supports all keyboard characters: a-z, 0-9, punctuation, space)
+- Menu bar integration with native macOS styling and icons
+- Persistent configuration storage with JSON encoding
+- Real-time conflict detection and validation
+- Comprehensive hotkey monitoring (works in all app contexts)
+- AppleScript-based app activation with NSWorkspace fallbacks
+- Accessibility permissions handling with user guidance
+- Polished configuration UI with live preview
 
 ## Technical Notes
 
-- Uses NSEvent.addGlobalMonitorForEvents for key monitoring
+- Uses dual event monitoring: NSEvent.addGlobalMonitorForEvents + addLocalMonitorForEvents
+- Global monitor captures events when other apps are focused
+- Local monitor captures events when own app/config window is focused
 - Requires accessibility permissions for global hotkey functionality
 - App sandbox is disabled to enable global event monitoring
 - Character storage uses String internally for Codable compliance
 - Default pluck key: Control + Option (⌃⌥)
+- Event consumption prevents UI interference in local monitoring
 
 ## Build Requirements
 
@@ -75,9 +84,20 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 - Accessibility permissions for global key monitoring
 - App sandbox disabled in entitlements
 
+## Development History
+
+### Recent Improvements
+- **Dual Event Monitoring**: Fixed hotkeys not working in config window
+- **UI Polish**: Enhanced spacing, layout, and visual hierarchy
+- **Comprehensive Character Support**: Full keyboard character mapping
+- **Dynamic Pluck Key**: Real-time modifier combination updates
+- **Robust App Activation**: AppleScript with NSWorkspace fallbacks
+
 ## Future Enhancements
 
 - Bundle identifier detection for more reliable app targeting
 - Import/export of hotkey configurations
 - System app integration (e.g., System Preferences panels)
 - Multiple pluck key profiles
+- Global hotkey conflict detection with other apps
+- Usage analytics and hotkey frequency tracking
