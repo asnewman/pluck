@@ -117,23 +117,20 @@ class HotkeyManager: ObservableObject {
         if let targetApp = targetApps.first {
             print("Activating \(binding.appName)...")
             
-            // Use AppleScript to reliably bring app to front
-            let script = """
-                tell application "\(binding.appName)"
-                    activate
-                end tell
-            """
-            
-            if let appleScript = NSAppleScript(source: script) {
-                var error: NSDictionary?
-                let result = appleScript.executeAndReturnError(&error)
-                if let error = error {
-                    print("AppleScript error: \(error)")
-                    // Fallback: try using NSWorkspace
-                    print("Trying NSWorkspace fallback...")
-                    NSWorkspace.shared.launchApplication(binding.appName)
+            // Use NSWorkspace to activate the running app directly
+            let success = targetApp.activate(options: [.activateIgnoringOtherApps])
+            if success {
+                print("Successfully activated \(binding.appName)")
+            } else {
+                print("Failed to activate \(binding.appName), trying alternative approach...")
+                // Alternative: try to launch which will also activate
+                if let bundleId = binding.bundleIdentifier,
+                   let appURL = workspace.urlForApplication(withBundleIdentifier: bundleId) {
+                    let configuration = NSWorkspace.OpenConfiguration()
+                    configuration.activates = true
+                    workspace.openApplication(at: appURL, configuration: configuration) { _, _ in }
                 } else {
-                    print("AppleScript executed successfully for \(binding.appName)")
+                    workspace.launchApplication(binding.appName)
                 }
             }
         } else {
@@ -144,11 +141,12 @@ class HotkeyManager: ObservableObject {
                let appURL = workspace.urlForApplication(withBundleIdentifier: bundleId) {
                 print("Found \(binding.appName) at: \(appURL)")
                 let configuration = NSWorkspace.OpenConfiguration()
+                configuration.activates = true
                 workspace.openApplication(at: appURL, configuration: configuration) { _, _ in }
             } else {
                 // Fallback to name-based launch
                 print("Trying to launch by name: \(binding.appName)")
-                NSWorkspace.shared.launchApplication(binding.appName)
+                workspace.launchApplication(binding.appName)
             }
         }
     }
@@ -166,23 +164,19 @@ class HotkeyManager: ObservableObject {
         if let messagesApp = messagesApps.first {
             print("Activating Messages app...")
             
-            // Use AppleScript to reliably bring Messages to front
-            let script = """
-                tell application "Messages"
-                    activate
-                end tell
-            """
-            
-            if let appleScript = NSAppleScript(source: script) {
-                var error: NSDictionary?
-                let result = appleScript.executeAndReturnError(&error)
-                if let error = error {
-                    print("AppleScript error: \(error)")
-                    // Fallback: try using NSWorkspace
-                    print("Trying NSWorkspace fallback...")
-                    NSWorkspace.shared.launchApplication("Messages")
+            // Use NSWorkspace to activate the running app directly
+            let success = messagesApp.activate(options: [.activateIgnoringOtherApps])
+            if success {
+                print("Successfully activated Messages")
+            } else {
+                print("Failed to activate Messages, trying alternative approach...")
+                // Alternative: try to launch which will also activate
+                if let messagesURL = workspace.urlForApplication(withBundleIdentifier: "com.apple.MobileSMS") {
+                    let configuration = NSWorkspace.OpenConfiguration()
+                    configuration.activates = true
+                    workspace.openApplication(at: messagesURL, configuration: configuration) { _, _ in }
                 } else {
-                    print("AppleScript executed successfully")
+                    workspace.launchApplication("Messages")
                 }
             }
         } else {
@@ -191,6 +185,7 @@ class HotkeyManager: ObservableObject {
             if let messagesURL = workspace.urlForApplication(withBundleIdentifier: "com.apple.MobileSMS") {
                 print("Found Messages at: \(messagesURL)")
                 let configuration = NSWorkspace.OpenConfiguration()
+                configuration.activates = true
                 workspace.openApplication(at: messagesURL, configuration: configuration) { _, _ in }
             } else {
                 print("Could not find Messages app")
