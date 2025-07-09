@@ -6,6 +6,12 @@ struct ConfigurationView: View {
     @State private var selectorCharacterInput = ""
     @State private var selectedAppName = ""
     @State private var showingAppPicker = false
+    @FocusState private var focusedField: Field?
+    
+    enum Field {
+        case selectorCharacter
+        case appName
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -134,6 +140,7 @@ struct ConfigurationView: View {
                             TextField("Press any key (a-z, 0-9, etc.)", text: $selectorCharacterInput)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .frame(width: 200)
+                                .focused($focusedField, equals: .selectorCharacter)
                                 .onChange(of: selectorCharacterInput) { newValue in
                                     if let firstChar = newValue.lowercased().first,
                                        KeyMapping.shared.isValidSelectorCharacter(firstChar) {
@@ -165,6 +172,7 @@ struct ConfigurationView: View {
                         HStack(spacing: 12) {
                             TextField("Application name", text: $selectedAppName)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .focused($focusedField, equals: .appName)
                             
                             Button("Choose App") {
                                 showAppPicker()
@@ -189,6 +197,7 @@ struct ConfigurationView: View {
                                 )
                                 selectedAppName = ""
                                 selectorCharacterInput = ""
+                                focusedField = nil
                             }
                         }
                         .disabled(selectedAppName.isEmpty || 
