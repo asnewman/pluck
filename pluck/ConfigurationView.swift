@@ -15,9 +15,17 @@ struct ConfigurationView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Pluck Configuration")
-                .font(.title2)
-                .bold()
+            HStack {
+                Text("Pluck Configuration")
+                    .font(.title2)
+                    .bold()
+                
+                Spacer()
+                
+                Link("Need help? Watch tutorial", destination: URL(string: "https://youtu.be/sDkCw4IEPYo")!)
+                    .font(.caption)
+                    .foregroundColor(.blue)
+            }
             
             Text("Configure your pluck key and hotkeys to quickly open apps")
                 .foregroundColor(.secondary)
@@ -211,8 +219,8 @@ struct ConfigurationView: View {
             
             Spacer()
         }
-        .padding(20)
-        .frame(width: 600, height: 580)
+        .padding(EdgeInsets(top: 32, leading: 20, bottom: 20, trailing: 20))
+        .frame(width: 600, height: 620)
     }
     
     private func showAppPicker() {
