@@ -20,6 +20,9 @@ class HotkeyManager: ObservableObject {
         if !trusted {
             print("Accessibility permissions not granted. Requesting...")
             
+            // Show informational popup when permissions are missing
+            showAccessibilityMissingPopup()
+            
             // Request accessibility permissions
             let options: CFDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
             let accessEnabled = AXIsProcessTrustedWithOptions(options)
@@ -71,6 +74,25 @@ class HotkeyManager: ObservableObject {
         if let localEventMonitor = localEventMonitor {
             NSEvent.removeMonitor(localEventMonitor)
             self.localEventMonitor = nil
+        }
+    }
+    
+    private func showAccessibilityMissingPopup() {
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = "Accessibility Permissions Required"
+            alert.informativeText = "Pluck needs accessibility permissions to monitor global hotkeys. Grant access in System Preferences, then restart Pluck."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Open Settings & Quit")
+            alert.addButton(withTitle: "Cancel")
+            
+            let response = alert.runModal()
+            if response == .alertFirstButtonReturn {
+                // Open System Preferences to Accessibility section
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                // Then quit the application
+                NSApplication.shared.terminate(nil)
+            }
         }
     }
     

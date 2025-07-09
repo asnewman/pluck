@@ -31,7 +31,8 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 - Registers both global and local event monitors for comprehensive coverage
 - Global monitor: captures hotkeys when other apps are focused
 - Local monitor: captures hotkeys when own app/config window is focused
-- Handles accessibility permissions checking with user guidance
+- Handles accessibility permissions checking with informational popup system
+- Shows warning popup when permissions are missing with "Open Settings & Quit" action
 - Focuses/launches applications using AppleScript and NSWorkspace fallbacks
 - Maps key events to configured bindings with dynamic pluck key support
 
@@ -66,7 +67,8 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 - Real-time conflict detection and validation
 - Comprehensive hotkey monitoring (works in all app contexts)
 - AppleScript-based app activation with NSWorkspace fallbacks
-- Accessibility permissions handling with user guidance
+- Accessibility permissions popup system with streamlined workflow
+- Automatic System Preferences opening and app quit for permission granting
 - Polished configuration UI with live preview
 
 ## Technical Notes
@@ -100,6 +102,7 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 - **Custom App Icons**: Rounded corner icons with ImageMagick processing and proper sizing
 - **Menu Bar Only Operation**: LSUIElement configuration for clean menu bar utility behavior
 - **Custom Menu Bar Icon**: Template-rendered "P" logo that adapts to system themes
+- **Accessibility Permissions UX**: Informational popup when permissions missing with "Open Settings & Quit" button that opens System Preferences and terminates app for streamlined restart workflow
 
 ## Future Enhancements
 
