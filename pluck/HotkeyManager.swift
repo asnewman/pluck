@@ -12,6 +12,10 @@ class HotkeyManager: ObservableObject {
     private var lastShiftPressTime: CFTimeInterval = 0
     private var isWaitingForSelector = false
     private let doubleShiftThreshold: CFTimeInterval = 0.5 // 500ms window for double-shift
+    private var selectorTimeoutTimer: Timer?
+    
+    // Overlay window
+    private var overlayWindowController: SelectorOverlayWindowController?
     
     func setConfigurationManager(_ configManager: ConfigurationManager) {
         self.configManager = configManager
@@ -110,6 +114,56 @@ class HotkeyManager: ObservableObject {
             NSEvent.removeMonitor(localEventMonitor)
             self.localEventMonitor = nil
         }
+        
+        cancelSelectorTimeout()
+        isWaitingForSelector = false
+        hideSelectorOverlay()
+    }
+    
+    private func showSelectorOverlay(isDoubleShiftMode: Bool) {
+        guard let configManager = configManager else { return }
+        
+        print("HotkeyManager: showSelectorOverlay called, isDoubleShiftMode: \(isDoubleShiftMode)")
+        DispatchQueue.main.async {
+            // Only hide existing overlay if there is one
+            if self.overlayWindowController != nil {
+                print("HotkeyManager: Hiding existing overlay")
+                self.overlayWindowController?.hide()
+                self.overlayWindowController = nil
+            }
+            
+            print("HotkeyManager: Creating new overlay with \(configManager.hotkeyBindings.count) bindings")
+            self.overlayWindowController = SelectorOverlayWindowController(
+                hotkeyBindings: configManager.hotkeyBindings,
+                isDoubleShiftMode: isDoubleShiftMode
+            )
+            print("HotkeyManager: Calling show on overlay")
+            self.overlayWindowController?.show()
+        }
+    }
+    
+    private func hideSelectorOverlay() {
+        print("HotkeyManager: hideSelectorOverlay called")
+        DispatchQueue.main.async {
+            print("HotkeyManager: On main queue, hiding overlay")
+            self.overlayWindowController?.hide()
+            self.overlayWindowController = nil
+        }
+    }
+    
+    private func startSelectorTimeout() {
+        cancelSelectorTimeout()
+        selectorTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
+            print("HotkeyManager: Selector timeout - resetting double-shift state")
+            self?.isWaitingForSelector = false
+            self?.hideSelectorOverlay()
+            self?.selectorTimeoutTimer = nil
+        }
+    }
+    
+    private func cancelSelectorTimeout() {
+        selectorTimeoutTimer?.invalidate()
+        selectorTimeoutTimer = nil
     }
     
     private func showAccessibilityMissingPopup() {
@@ -150,23 +204,51 @@ class HotkeyManager: ObservableObject {
         
         // Check for double-shift activation (left shift: 56, right shift: 60)
         // For shift keys, we need to check flagsChanged events when shift is pressed
-        if configManager.isDoubleShiftEnabled && eventType == .flagsChanged && modifierFlags.contains(.shift) && (keyCode == 56 || keyCode == 60) {
-            if currentTime - lastShiftPressTime <= doubleShiftThreshold {
-                // Double-shift detected
-                print("Double-shift detected! Waiting for selector key...")
-                isWaitingForSelector = true
-                lastShiftPressTime = 0 // Reset to prevent triple-shift issues
-                return true
+        if configManager.isDoubleShiftEnabled && eventType == .flagsChanged && (keyCode == 56 || keyCode == 60) {
+            // Only trigger on shift key press (when shift modifier is present)
+            if modifierFlags.contains(.shift) {
+                print("Shift press detected. Current time: \(currentTime), Last shift time: \(lastShiftPressTime), Diff: \(currentTime - lastShiftPressTime)")
+                if currentTime - lastShiftPressTime <= doubleShiftThreshold && lastShiftPressTime > 0 {
+                    // Double-shift detected
+                    print("Double-shift detected! Waiting for selector key...")
+                    isWaitingForSelector = true
+                    lastShiftPressTime = 0 // Reset to prevent triple-shift issues
+                    showSelectorOverlay(isDoubleShiftMode: true)
+                    startSelectorTimeout()
+                    return true
+                } else {
+                    print("First shift or too slow, recording time")
+                    lastShiftPressTime = currentTime
+                }
             } else {
-                lastShiftPressTime = currentTime
-                return false
+                print("Shift released")
             }
+            // Don't consume shift key events
+            return false
         }
+        
         
         // Handle selector key after double-shift (only for keyDown events)
         if isWaitingForSelector && eventType == .keyDown {
-            isWaitingForSelector = false
-            return handleSelectorKey(keyCode: keyCode)
+            // Check for Escape key to cancel
+            if keyCode == 53 { // Escape key
+                cancelSelectorTimeout()
+                isWaitingForSelector = false
+                hideSelectorOverlay()
+                return true // Consume the escape key
+            }
+            
+            // Reset the timer to give user more time to select
+            overlayWindowController?.resetHideTimer()
+            
+            // Only hide overlay and reset state if we successfully handle the selector key
+            let handledSuccessfully = handleSelectorKey(keyCode: keyCode)
+            if handledSuccessfully {
+                cancelSelectorTimeout()
+                isWaitingForSelector = false
+                hideSelectorOverlay()
+            }
+            return handledSuccessfully
         }
         
         // Handle regular pluck key combinations (only for keyDown events)
