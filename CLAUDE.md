@@ -31,12 +31,13 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 **HotkeyManager.swift**
 - Uses CGEventTap for system-wide event interception and consumption
 - Implements double-shift detection with 500ms timing window
-- Manages selector overlay window display and lifecycle
+- Manages selector overlay window display and lifecycle with 5-second timeout
 - Handles accessibility permissions checking with informational popup system
 - Shows warning popup when permissions are missing with "Open Settings & Quit" action
 - Focuses/launches applications using AppleScript and NSWorkspace fallbacks
 - Maps key events to configured bindings with dynamic pluck key support
 - Consumes hotkey events to prevent interference with focused applications
+- Automatic timeout reset prevents stuck selector state after double-shift activation
 
 **ConfigurationView.swift**
 - SwiftUI interface for managing pluck key and hotkey bindings
@@ -56,15 +57,16 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 
 **SelectorOverlayView.swift**
 - SwiftUI view for displaying available hotkey selectors
-- Shows up to 8 bindings with styled key indicators and app names
+- Shows all configured bindings with styled key indicators and app names
 - Native macOS design with material background and shadows
-- Supports both pluck key and double-shift activation modes
+- Displays "Pluck" heading with clear instructions for usage
 
 **SelectorOverlayWindow.swift**
 - Borderless floating window for selector overlay display
 - Auto-positioning at screen center with proper sizing
-- 5-second auto-hide timer with manual hide options
+- 5-second auto-hide timer with manual hide options and timeout reset
 - Non-intrusive design that doesn't steal focus or become key window
+- Automatically resizes to accommodate all configured hotkey bindings
 
 ## Key Terminology
 
@@ -118,6 +120,8 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 ### Recent Improvements
 - **Double-Shift Activation**: Optional alternative hotkey activation using two quick shift presses
 - **Visual Selector Overlay**: Popup window displaying available hotkey options after double-shift
+- **Selector Overlay Fixes**: Fixed flashing display issue and added 5-second automatic timeout
+- **Complete Selector Display**: Removed 8-item limit to show all configured hotkey bindings
 - **System-Wide Event Consumption**: CGEventTap implementation prevents hotkey interference with focused apps
 - **Enhanced Configuration UI**: Scrollable layout with double-shift toggle and live preview updates
 - **Dual Event Monitoring**: Fixed hotkeys not working in config window

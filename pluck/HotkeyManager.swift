@@ -228,6 +228,14 @@ class HotkeyManager: ObservableObject {
         }
         
         
+        // Reset double-shift timing if any non-shift key is pressed
+        if configManager.isDoubleShiftEnabled && eventType == .keyDown && keyCode != 56 && keyCode != 60 {
+            if lastShiftPressTime > 0 {
+                print("Non-shift key pressed, resetting double-shift timing")
+                lastShiftPressTime = 0
+            }
+        }
+        
         // Handle selector key after double-shift (only for keyDown events)
         if isWaitingForSelector && eventType == .keyDown {
             // Check for Escape key to cancel
