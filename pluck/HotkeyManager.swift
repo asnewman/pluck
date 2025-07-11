@@ -5,6 +5,7 @@ import ApplicationServices
 class HotkeyManager: ObservableObject {
     private var globalEventMonitor: Any?
     private var localEventMonitor: Any?
+    private var eventTap: CFMachPort?
     private var configManager: ConfigurationManager?
     
     // Double-shift detection properties
@@ -14,6 +15,26 @@ class HotkeyManager: ObservableObject {
     
     func setConfigurationManager(_ configManager: ConfigurationManager) {
         self.configManager = configManager
+    }
+    
+    // Event tap callback for consuming events system-wide
+    private let eventTapCallback: CGEventTapCallBack = { proxy, type, event, refcon in
+        let hotkeyManager = Unmanaged<HotkeyManager>.fromOpaque(refcon!).takeUnretainedValue()
+        return hotkeyManager.handleCGEvent(proxy: proxy, type: type, event: event)
+    }
+    
+    private func handleCGEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        guard configManager != nil else {
+            return Unmanaged.passUnretained(event)
+        }
+        
+        // Convert CGEvent to NSEvent for compatibility with existing logic
+        guard let nsEvent = NSEvent(cgEvent: event) else {
+            return Unmanaged.passUnretained(event)
+        }
+        
+        let shouldConsume = handleKeyEvent(event: nsEvent)
+        return shouldConsume ? nil : Unmanaged.passUnretained(event)
     }
     
     func registerHotkey() {
@@ -41,13 +62,30 @@ class HotkeyManager: ObservableObject {
             }
         }
         
-        // Global monitor for when other apps are focused
-        globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
-            print("Global key event: keyCode=\(event.keyCode), modifiers=\(event.modifierFlags), type=\(event.type.rawValue)")
-            self.handleKeyEvent(event: event)
+        // Create event tap for system-wide event consumption
+        let eventMask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.flagsChanged.rawValue)
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+        
+        eventTap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: CGEventMask(eventMask),
+            callback: eventTapCallback,
+            userInfo: selfPtr
+        )
+        
+        guard let eventTap = eventTap else {
+            print("Failed to create event tap - accessibility permissions may be required")
+            return
         }
         
-        // Local monitor for when our own app is focused
+        // Create run loop source and add to current run loop
+        let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
+        CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
+        CGEvent.tapEnable(tap: eventTap, enable: true)
+        
+        // Keep local monitor for when our own app is focused (as backup)
         localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
             print("Local key event: keyCode=\(event.keyCode), modifiers=\(event.modifierFlags), type=\(event.type.rawValue)")
             let shouldConsume = self.handleKeyEvent(event: event)
@@ -62,9 +100,10 @@ class HotkeyManager: ObservableObject {
     }
     
     func unregisterHotkey() {
-        if let globalEventMonitor = globalEventMonitor {
-            NSEvent.removeMonitor(globalEventMonitor)
-            self.globalEventMonitor = nil
+        if let eventTap = eventTap {
+            CGEvent.tapEnable(tap: eventTap, enable: false)
+            CFMachPortInvalidate(eventTap)
+            self.eventTap = nil
         }
         
         if let localEventMonitor = localEventMonitor {
