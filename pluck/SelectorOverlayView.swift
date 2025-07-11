@@ -21,7 +21,7 @@ struct SelectorOverlayView: View {
                     .italic()
             } else {
                 VStack(spacing: 6) {
-                    ForEach(hotkeyBindings.prefix(8)) { binding in
+                    ForEach(hotkeyBindings) { binding in
                         HStack(spacing: 8) {
                             Text(KeyMapping.shared.displayName(for: binding.selectorCharacter))
                                 .font(.system(.body, design: .monospaced))
@@ -44,13 +44,6 @@ struct SelectorOverlayView: View {
                             
                             Spacer()
                         }
-                    }
-                    
-                    if hotkeyBindings.count > 8 {
-                        Text("+ \(hotkeyBindings.count - 8) more...")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .italic()
                     }
                 }
             }
