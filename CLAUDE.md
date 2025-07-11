@@ -30,7 +30,7 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 
 **HotkeyManager.swift**
 - Uses CGEventTap for system-wide event interception and consumption
-- Implements double-shift detection with 500ms timing window
+- Implements double-shift detection with 500ms timing window requiring complete press/release cycles
 - Manages selector overlay window display and lifecycle with 5-second timeout
 - Handles accessibility permissions checking with informational popup system
 - Shows warning popup when permissions are missing with "Open Settings & Quit" action
@@ -38,6 +38,8 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 - Maps key events to configured bindings with dynamic pluck key support
 - Consumes hotkey events to prevent interference with focused applications
 - Automatic timeout reset prevents stuck selector state after double-shift activation
+- ESC key resets double-shift state and dismisses selector overlay
+- Prevents holding shift from triggering double-shift activation
 
 **ConfigurationView.swift**
 - SwiftUI interface for managing pluck key and hotkey bindings
@@ -80,8 +82,9 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 
 - Fully customizable pluck key (any combination of Control, Option, Shift, Command)
 - Character-based selectors (supports all keyboard characters: a-z, 0-9, punctuation, space)
-- **Double-shift activation**: Optional alternative activation using two quick shift presses
+- **Double-shift activation**: Optional alternative activation using two quick shift presses (requires complete press/release cycles)
 - **Visual selector overlay**: Popup showing available hotkeys after double-shift activation
+- **ESC cancellation**: ESC key resets double-shift state and dismisses overlay UI
 - Menu bar only operation (no Dock icon) with custom "P" logo
 - Custom rounded corner app icons with proper sizing and padding
 - Template-based menu bar icon that adapts to system theme
@@ -98,7 +101,7 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 
 - Uses CGEventTap for system-wide event interception and consumption
 - Dual event monitoring with local NSEvent monitor as backup
-- Double-shift detection uses 500ms timing window for rapid successive presses
+- Double-shift detection uses 500ms timing window requiring complete press/release cycles (prevents holding shift from triggering)
 - Requires accessibility permissions for global hotkey functionality
 - App sandbox is disabled to enable global event monitoring
 - Character storage uses String internally for Codable compliance
@@ -119,6 +122,9 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 
 ### Recent Improvements
 - **Double-Shift Activation**: Optional alternative hotkey activation using two quick shift presses
+- **Press/Release Cycle Detection**: Double-shift now requires complete key press/release cycles to prevent accidental activation from holding shift
+- **ESC Key Cancellation**: ESC key resets double-shift state and dismisses selector overlay for better user control
+- **Intervening Keystroke Protection**: Shift+key+shift sequences no longer trigger double-shift activation
 - **Visual Selector Overlay**: Popup window displaying available hotkey options after double-shift
 - **Selector Overlay Fixes**: Fixed flashing display issue and added 5-second automatic timeout
 - **Complete Selector Display**: Removed 8-item limit to show all configured hotkey bindings

@@ -13,6 +13,7 @@ class HotkeyManager: ObservableObject {
     private var isWaitingForSelector = false
     private let doubleShiftThreshold: CFTimeInterval = 0.5 // 500ms window for double-shift
     private var selectorTimeoutTimer: Timer?
+    private var isShiftCurrentlyPressed = false
     
     // Overlay window
     private var overlayWindowController: SelectorOverlayWindowController?
@@ -117,6 +118,7 @@ class HotkeyManager: ObservableObject {
         
         cancelSelectorTimeout()
         isWaitingForSelector = false
+        isShiftCurrentlyPressed = false
         hideSelectorOverlay()
     }
     
@@ -203,25 +205,33 @@ class HotkeyManager: ObservableObject {
         }
         
         // Check for double-shift activation (left shift: 56, right shift: 60)
-        // For shift keys, we need to check flagsChanged events when shift is pressed
+        // For shift keys, we need to check flagsChanged events for press/release cycles
         if configManager.isDoubleShiftEnabled && eventType == .flagsChanged && (keyCode == 56 || keyCode == 60) {
-            // Only trigger on shift key press (when shift modifier is present)
             if modifierFlags.contains(.shift) {
-                print("Shift press detected. Current time: \(currentTime), Last shift time: \(lastShiftPressTime), Diff: \(currentTime - lastShiftPressTime)")
-                if currentTime - lastShiftPressTime <= doubleShiftThreshold && lastShiftPressTime > 0 {
-                    // Double-shift detected
-                    print("Double-shift detected! Waiting for selector key...")
-                    isWaitingForSelector = true
-                    lastShiftPressTime = 0 // Reset to prevent triple-shift issues
-                    showSelectorOverlay(isDoubleShiftMode: true)
-                    startSelectorTimeout()
-                    return true
-                } else {
-                    print("First shift or too slow, recording time")
-                    lastShiftPressTime = currentTime
+                // Shift key pressed down
+                if !isShiftCurrentlyPressed {
+                    print("Shift press started")
+                    isShiftCurrentlyPressed = true
                 }
             } else {
-                print("Shift released")
+                // Shift key released - this counts as one "shift press"
+                if isShiftCurrentlyPressed {
+                    print("Shift released. Current time: \(currentTime), Last shift time: \(lastShiftPressTime), Diff: \(currentTime - lastShiftPressTime)")
+                    isShiftCurrentlyPressed = false
+                    
+                    if currentTime - lastShiftPressTime <= doubleShiftThreshold && lastShiftPressTime > 0 {
+                        // Double-shift detected
+                        print("Double-shift detected! Waiting for selector key...")
+                        isWaitingForSelector = true
+                        lastShiftPressTime = 0 // Reset to prevent triple-shift issues
+                        showSelectorOverlay(isDoubleShiftMode: true)
+                        startSelectorTimeout()
+                        return true
+                    } else {
+                        print("First shift or too slow, recording time")
+                        lastShiftPressTime = currentTime
+                    }
+                }
             }
             // Don't consume shift key events
             return false
@@ -230,9 +240,10 @@ class HotkeyManager: ObservableObject {
         
         // Handle ESC key to reset double-shift state and dismiss any overlay
         if configManager.isDoubleShiftEnabled && eventType == .keyDown && keyCode == 53 { // Escape key
-            if lastShiftPressTime > 0 || isWaitingForSelector {
+            if lastShiftPressTime > 0 || isWaitingForSelector || isShiftCurrentlyPressed {
                 print("ESC pressed, resetting double-shift state")
                 lastShiftPressTime = 0
+                isShiftCurrentlyPressed = false
                 if isWaitingForSelector {
                     cancelSelectorTimeout()
                     isWaitingForSelector = false
@@ -244,9 +255,10 @@ class HotkeyManager: ObservableObject {
         
         // Reset double-shift timing if any non-shift key is pressed
         if configManager.isDoubleShiftEnabled && eventType == .keyDown && keyCode != 56 && keyCode != 60 {
-            if lastShiftPressTime > 0 {
+            if lastShiftPressTime > 0 || isShiftCurrentlyPressed {
                 print("Non-shift key pressed, resetting double-shift timing")
                 lastShiftPressTime = 0
+                isShiftCurrentlyPressed = false
             }
         }
         

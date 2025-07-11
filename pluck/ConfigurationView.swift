@@ -23,7 +23,7 @@ struct ConfigurationView: View {
                 
                 Spacer()
                 
-                Link("Need help? Watch tutorial", destination: URL(string: "https://youtu.be/sDkCw4IEPYo")!)
+                Link("Need help? Watch tutorial", destination: URL(string: "https://youtu.be/Bfvy_Q8MYks")!)
                     .font(.caption)
                     .foregroundColor(.blue)
             }
