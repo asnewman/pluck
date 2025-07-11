@@ -7,6 +7,11 @@ class HotkeyManager: ObservableObject {
     private var localEventMonitor: Any?
     private var configManager: ConfigurationManager?
     
+    // Double-shift detection properties
+    private var lastShiftPressTime: CFTimeInterval = 0
+    private var isWaitingForSelector = false
+    private let doubleShiftThreshold: CFTimeInterval = 0.5 // 500ms window for double-shift
+    
     func setConfigurationManager(_ configManager: ConfigurationManager) {
         self.configManager = configManager
     }
@@ -37,25 +42,16 @@ class HotkeyManager: ObservableObject {
         }
         
         // Global monitor for when other apps are focused
-        globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { event in
-            print("Global key event: keyCode=\(event.keyCode), modifiers=\(event.modifierFlags)")
-            if let configManager = self.configManager,
-               !configManager.pluckKey.isEmpty,
-               event.modifierFlags.contains(configManager.pluckKey.modifierFlags) {
-                self.handleHotkeyEvent(keyCode: event.keyCode)
-            }
+        globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+            print("Global key event: keyCode=\(event.keyCode), modifiers=\(event.modifierFlags), type=\(event.type.rawValue)")
+            self.handleKeyEvent(event: event)
         }
         
         // Local monitor for when our own app is focused
-        localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
-            print("Local key event: keyCode=\(event.keyCode), modifiers=\(event.modifierFlags)")
-            if let configManager = self.configManager,
-               !configManager.pluckKey.isEmpty,
-               event.modifierFlags.contains(configManager.pluckKey.modifierFlags) {
-                self.handleHotkeyEvent(keyCode: event.keyCode)
-                return nil // Consume the event to prevent further processing
-            }
-            return event // Let other events pass through
+        localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+            print("Local key event: keyCode=\(event.keyCode), modifiers=\(event.modifierFlags), type=\(event.type.rawValue)")
+            let shouldConsume = self.handleKeyEvent(event: event)
+            return shouldConsume ? nil : event
         }
         
         if let configManager = configManager {
@@ -96,24 +92,69 @@ class HotkeyManager: ObservableObject {
         }
     }
     
-    private func handleHotkeyEvent(keyCode: UInt16) {
+    @discardableResult
+    private func handleKeyEvent(event: NSEvent) -> Bool {
         guard let configManager = configManager else {
             print("No configuration manager available")
-            return
+            return false
         }
+        
+        let keyCode = event.keyCode
+        let modifierFlags = event.modifierFlags
+        let currentTime = CACurrentMediaTime()
+        let eventType = event.type
+        
+        // Debug: Log all key events when double-shift is enabled
+        if configManager.isDoubleShiftEnabled {
+            print("Key event: keyCode=\(keyCode), type=\(eventType.rawValue), modifiers=\(modifierFlags), time=\(currentTime), lastShiftTime=\(lastShiftPressTime), timeDiff=\(currentTime - lastShiftPressTime)")
+        }
+        
+        // Check for double-shift activation (left shift: 56, right shift: 60)
+        // For shift keys, we need to check flagsChanged events when shift is pressed
+        if configManager.isDoubleShiftEnabled && eventType == .flagsChanged && modifierFlags.contains(.shift) && (keyCode == 56 || keyCode == 60) {
+            if currentTime - lastShiftPressTime <= doubleShiftThreshold {
+                // Double-shift detected
+                print("Double-shift detected! Waiting for selector key...")
+                isWaitingForSelector = true
+                lastShiftPressTime = 0 // Reset to prevent triple-shift issues
+                return true
+            } else {
+                lastShiftPressTime = currentTime
+                return false
+            }
+        }
+        
+        // Handle selector key after double-shift (only for keyDown events)
+        if isWaitingForSelector && eventType == .keyDown {
+            isWaitingForSelector = false
+            return handleSelectorKey(keyCode: keyCode)
+        }
+        
+        // Handle regular pluck key combinations (only for keyDown events)
+        if eventType == .keyDown && !configManager.pluckKey.isEmpty && modifierFlags.contains(configManager.pluckKey.modifierFlags) {
+            return handleSelectorKey(keyCode: keyCode)
+        }
+        
+        return false
+    }
+    
+    private func handleSelectorKey(keyCode: UInt16) -> Bool {
+        guard let configManager = configManager else { return false }
         
         // Find the character for this key code
         guard let character = KeyMapping.shared.character(for: keyCode) else {
             print("No character mapping found for keyCode: \(keyCode)")
-            return
+            return false
         }
         
         // Find binding for this character
         if let binding = configManager.hotkeyBindings.first(where: { $0.selectorCharacter == character }) {
-            print("Hotkey detected for \(binding.displayText(with: configManager.pluckKey))! Focusing \(binding.appName)...")
+            print("Hotkey detected for '\(character)'! Focusing \(binding.appName)...")
             focusApp(binding: binding)
+            return true
         } else {
             print("No binding found for character: '\(character)' (keyCode: \(keyCode))")
+            return false
         }
     }
     

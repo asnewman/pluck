@@ -31,10 +31,12 @@ struct HotkeyBinding: Codable, Identifiable {
 class ConfigurationManager: ObservableObject {
     @Published var hotkeyBindings: [HotkeyBinding] = []
     @Published var pluckKey = PluckKeyConfiguration()
+    @Published var isDoubleShiftEnabled = false
     
     private let userDefaults = UserDefaults.standard
     private let bindingsKey = "HotkeyBindings"
     private let pluckKeyKey = "PluckKeyConfiguration"
+    private let doubleShiftKey = "DoubleShiftEnabled"
     
     init() {
         loadConfiguration()
@@ -74,6 +76,11 @@ class ConfigurationManager: ObservableObject {
         saveConfiguration()
     }
     
+    func updateDoubleShiftEnabled(_ enabled: Bool) {
+        isDoubleShiftEnabled = enabled
+        saveConfiguration()
+    }
+    
     private func saveConfiguration() {
         // Save hotkey bindings
         if let encoded = try? JSONEncoder().encode(hotkeyBindings) {
@@ -84,6 +91,9 @@ class ConfigurationManager: ObservableObject {
         if let encoded = try? JSONEncoder().encode(pluckKey) {
             userDefaults.set(encoded, forKey: pluckKeyKey)
         }
+        
+        // Save double-shift setting
+        userDefaults.set(isDoubleShiftEnabled, forKey: doubleShiftKey)
     }
     
     private func loadConfiguration() {
@@ -98,6 +108,9 @@ class ConfigurationManager: ObservableObject {
            let decoded = try? JSONDecoder().decode(PluckKeyConfiguration.self, from: data) {
             pluckKey = decoded
         }
+        
+        // Load double-shift setting
+        isDoubleShiftEnabled = userDefaults.bool(forKey: doubleShiftKey)
     }
     
     func isCharacterAvailable(_ character: Character) -> Bool {

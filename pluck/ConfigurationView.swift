@@ -14,7 +14,8 @@ struct ConfigurationView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("Pluck Configuration")
                     .font(.title2)
@@ -93,6 +94,29 @@ struct ConfigurationView: View {
                 .padding(16)
             }
             
+            // Double-Shift Configuration
+            GroupBox("Alternative Activation") {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Toggle("Enable double-shift activation", isOn: Binding(
+                            get: { configManager.isDoubleShiftEnabled },
+                            set: { newValue in
+                                configManager.updateDoubleShiftEnabled(newValue)
+                            }
+                        ))
+                        
+                        Spacer()
+                    }
+                    
+                    if configManager.isDoubleShiftEnabled {
+                        Text("Press Shift twice quickly, then press a selector key to activate hotkeys")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(16)
+            }
+            
             // Current bindings list
             GroupBox("Current Hotkeys") {
                 if configManager.hotkeyBindings.isEmpty {
@@ -160,13 +184,27 @@ struct ConfigurationView: View {
                                 }
                             
                             if !selectorCharacterInput.isEmpty {
-                                Text("Preview: \(configManager.pluckKey.displayText)+\(KeyMapping.shared.displayName(for: selectedSelectorCharacter))")
-                                    .font(.system(.caption, design: .monospaced))
-                                    .foregroundColor(.blue)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color.blue.opacity(0.1))
-                                    .cornerRadius(4)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    if !configManager.pluckKey.isEmpty {
+                                        Text("Preview: \(configManager.pluckKey.displayText)+\(KeyMapping.shared.displayName(for: selectedSelectorCharacter))")
+                                            .font(.system(.caption, design: .monospaced))
+                                            .foregroundColor(.blue)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(Color.blue.opacity(0.1))
+                                            .cornerRadius(4)
+                                    }
+                                    
+                                    if configManager.isDoubleShiftEnabled {
+                                        Text("Alt: ⇧⇧+\(KeyMapping.shared.displayName(for: selectedSelectorCharacter))")
+                                            .font(.system(.caption, design: .monospaced))
+                                            .foregroundColor(.green)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(Color.green.opacity(0.1))
+                                            .cornerRadius(4)
+                                    }
+                                }
                             }
                             
                             Spacer()
@@ -216,11 +254,10 @@ struct ConfigurationView: View {
                 }
                 .padding(16)
             }
-            
-            Spacer()
+            }
+            .padding(EdgeInsets(top: 32, leading: 20, bottom: 20, trailing: 20))
         }
-        .padding(EdgeInsets(top: 32, leading: 20, bottom: 20, trailing: 20))
-        .frame(width: 600, height: 620)
+        .frame(width: 600, height: 550)
     }
     
     private func showAppPicker() {
