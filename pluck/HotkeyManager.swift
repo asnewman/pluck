@@ -228,6 +228,20 @@ class HotkeyManager: ObservableObject {
         }
         
         
+        // Handle ESC key to reset double-shift state and dismiss any overlay
+        if configManager.isDoubleShiftEnabled && eventType == .keyDown && keyCode == 53 { // Escape key
+            if lastShiftPressTime > 0 || isWaitingForSelector {
+                print("ESC pressed, resetting double-shift state")
+                lastShiftPressTime = 0
+                if isWaitingForSelector {
+                    cancelSelectorTimeout()
+                    isWaitingForSelector = false
+                    hideSelectorOverlay()
+                }
+                return true // Consume the escape key
+            }
+        }
+        
         // Reset double-shift timing if any non-shift key is pressed
         if configManager.isDoubleShiftEnabled && eventType == .keyDown && keyCode != 56 && keyCode != 60 {
             if lastShiftPressTime > 0 {
@@ -238,14 +252,6 @@ class HotkeyManager: ObservableObject {
         
         // Handle selector key after double-shift (only for keyDown events)
         if isWaitingForSelector && eventType == .keyDown {
-            // Check for Escape key to cancel
-            if keyCode == 53 { // Escape key
-                cancelSelectorTimeout()
-                isWaitingForSelector = false
-                hideSelectorOverlay()
-                return true // Consume the escape key
-            }
-            
             // Reset the timer to give user more time to select
             overlayWindowController?.resetHideTimer()
             
