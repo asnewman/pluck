@@ -277,6 +277,12 @@ class HotkeyManager: ObservableObject {
             return handledSuccessfully
         }
         
+        // Handle Command+Tab disabling if enabled
+        if configManager.isCommandTabDisabled && eventType == .keyDown && keyCode == 48 && modifierFlags.contains(.command) { // Tab key (48) with Command
+            print("Command+Tab blocked to encourage pluck hotkey usage")
+            return true // Consume the event to block Command+Tab
+        }
+        
         // Handle regular pluck key combinations (only for keyDown events)
         if eventType == .keyDown && !configManager.pluckKey.isEmpty && modifierFlags.contains(configManager.pluckKey.modifierFlags) {
             return handleSelectorKey(keyCode: keyCode)

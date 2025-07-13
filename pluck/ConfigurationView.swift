@@ -117,6 +117,29 @@ struct ConfigurationView: View {
                 .padding(16)
             }
             
+            // Command+Tab Disabling Configuration
+            GroupBox("Training Mode") {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Toggle("Disable Command+Tab", isOn: Binding(
+                            get: { configManager.isCommandTabDisabled },
+                            set: { newValue in
+                                configManager.updateCommandTabDisabled(newValue)
+                            }
+                        ))
+                        
+                        Spacer()
+                    }
+                    
+                    if configManager.isCommandTabDisabled {
+                        Text("Command+Tab will be blocked to encourage using pluck hotkeys instead")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(16)
+            }
+            
             // Current bindings list
             GroupBox("Current Hotkeys") {
                 if configManager.hotkeyBindings.isEmpty {
@@ -257,7 +280,7 @@ struct ConfigurationView: View {
             }
             .padding(EdgeInsets(top: 32, leading: 20, bottom: 20, trailing: 20))
         }
-        .frame(width: 600, height: 550)
+        .frame(width: 600, height: 620)
     }
     
     private func showAppPicker() {

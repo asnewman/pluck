@@ -32,11 +32,13 @@ class ConfigurationManager: ObservableObject {
     @Published var hotkeyBindings: [HotkeyBinding] = []
     @Published var pluckKey = PluckKeyConfiguration()
     @Published var isDoubleShiftEnabled = false
+    @Published var isCommandTabDisabled = false
     
     private let userDefaults = UserDefaults.standard
     private let bindingsKey = "HotkeyBindings"
     private let pluckKeyKey = "PluckKeyConfiguration"
     private let doubleShiftKey = "DoubleShiftEnabled"
+    private let commandTabDisabledKey = "CommandTabDisabled"
     
     init() {
         loadConfiguration()
@@ -81,6 +83,11 @@ class ConfigurationManager: ObservableObject {
         saveConfiguration()
     }
     
+    func updateCommandTabDisabled(_ disabled: Bool) {
+        isCommandTabDisabled = disabled
+        saveConfiguration()
+    }
+    
     private func saveConfiguration() {
         // Save hotkey bindings
         if let encoded = try? JSONEncoder().encode(hotkeyBindings) {
@@ -94,6 +101,9 @@ class ConfigurationManager: ObservableObject {
         
         // Save double-shift setting
         userDefaults.set(isDoubleShiftEnabled, forKey: doubleShiftKey)
+        
+        // Save command+tab disabled setting
+        userDefaults.set(isCommandTabDisabled, forKey: commandTabDisabledKey)
     }
     
     private func loadConfiguration() {
@@ -111,6 +121,9 @@ class ConfigurationManager: ObservableObject {
         
         // Load double-shift setting
         isDoubleShiftEnabled = userDefaults.bool(forKey: doubleShiftKey)
+        
+        // Load command+tab disabled setting
+        isCommandTabDisabled = userDefaults.bool(forKey: commandTabDisabledKey)
     }
     
     func isCharacterAvailable(_ character: Character) -> Bool {
