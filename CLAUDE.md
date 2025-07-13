@@ -26,6 +26,7 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 - Handles persistence via UserDefaults with JSON encoding
 - Provides CRUD operations for bindings
 - Manages double-shift activation feature toggle
+- Manages Command+Tab disabling for training mode
 - Default binding: Ctrl+Option+M → Messages
 
 **HotkeyManager.swift**
@@ -40,11 +41,13 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 - Automatic timeout reset prevents stuck selector state after double-shift activation
 - ESC key resets double-shift state and dismisses selector overlay
 - Prevents holding shift from triggering double-shift activation
+- Command+Tab blocking for training mode when enabled
 
 **ConfigurationView.swift**
 - SwiftUI interface for managing pluck key and hotkey bindings
 - Real-time preview of hotkey combinations with styled display
 - Double-shift activation toggle with visual previews
+- Command+Tab disabling toggle in Training Mode section
 - App picker integration with native file dialog
 - Conflict detection for duplicate selectors
 - Polished UI with consistent spacing and visual hierarchy
@@ -85,6 +88,7 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 - **Double-shift activation**: Optional alternative activation using two quick shift presses (requires complete press/release cycles)
 - **Visual selector overlay**: Popup showing available hotkeys after double-shift activation
 - **ESC cancellation**: ESC key resets double-shift state and dismisses overlay UI
+- **Training mode**: Optional Command+Tab disabling to encourage pluck hotkey usage
 - Menu bar only operation (no Dock icon) with custom "P" logo
 - Custom rounded corner app icons with proper sizing and padding
 - Template-based menu bar icon that adapts to system theme
@@ -121,6 +125,7 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 ## Development History
 
 ### Recent Improvements
+- **Command+Tab Training Mode**: Optional Command+Tab disabling to train users to use pluck hotkeys instead
 - **Double-Shift Activation**: Optional alternative hotkey activation using two quick shift presses
 - **Press/Release Cycle Detection**: Double-shift now requires complete key press/release cycles to prevent accidental activation from holding shift
 - **ESC Key Cancellation**: ESC key resets double-shift state and dismisses selector overlay for better user control
