@@ -321,10 +321,18 @@ class HotkeyManager: ObservableObject {
             targetApps = workspace.runningApplications.filter { $0.bundleIdentifier == bundleId }
         }
         
-        // Fallback to name-based search
+        // Fallback to name-based search with exact match priority
         if targetApps.isEmpty {
+            // First try exact match
             targetApps = workspace.runningApplications.filter { app in
-                app.localizedName?.lowercased().contains(binding.appName.lowercased()) == true
+                app.localizedName?.lowercased() == binding.appName.lowercased()
+            }
+            
+            // If no exact match, fallback to contains match
+            if targetApps.isEmpty {
+                targetApps = workspace.runningApplications.filter { app in
+                    app.localizedName?.lowercased().contains(binding.appName.lowercased()) == true
+                }
             }
         }
         
@@ -360,9 +368,30 @@ class HotkeyManager: ObservableObject {
                 configuration.activates = true
                 workspace.openApplication(at: appURL, configuration: configuration) { _, _ in }
             } else {
-                // Fallback to name-based launch
+                // Fallback to name-based launch - try to find exact app name in Applications
                 print("Trying to launch by name: \(binding.appName)")
-                workspace.launchApplication(binding.appName)
+                let appSearchPaths = ["/Applications", "/System/Applications"]
+                var foundApp = false
+                
+                for searchPath in appSearchPaths {
+                    let exactAppPath = "\(searchPath)/\(binding.appName).app"
+                    if FileManager.default.fileExists(atPath: exactAppPath) {
+                        if let appURL = URL(string: "file://\(exactAppPath)") {
+                            print("Found exact app at: \(exactAppPath)")
+                            let configuration = NSWorkspace.OpenConfiguration()
+                            configuration.activates = true
+                            workspace.openApplication(at: appURL, configuration: configuration) { _, _ in }
+                            foundApp = true
+                            break
+                        }
+                    }
+                }
+                
+                if !foundApp {
+                    // Final fallback to NSWorkspace.launchApplication
+                    print("Using NSWorkspace.launchApplication as final fallback")
+                    workspace.launchApplication(binding.appName)
+                }
             }
         }
     }
