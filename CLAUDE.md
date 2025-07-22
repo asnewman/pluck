@@ -115,6 +115,29 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 - LSUIElement = YES hides app from Dock, keeping only menu bar presence
 - Custom MenuBarIcon.imageset with 1x/2x template rendering for theme adaptation
 
+## Logging & Debugging
+
+**Logger.swift**
+- Comprehensive file-based logging system with multiple log levels (DEBUG, INFO, WARNING, ERROR)
+- Logs stored in ~/Library/Application Support/Pluck/Logs/ directory
+- Automatic log rotation when files exceed 10MB (keeps 3 backup files)
+- Session tracking with app version, build number, macOS version, and system specs
+- Background queue logging to prevent UI blocking
+- Console output in debug builds for development
+
+**Export Logs Feature**
+- Menu bar "Export Logs" option creates ZIP file with all log files and system information
+- Includes system specs: processor, memory, accessibility permissions status
+- Logs include detailed event tracking, hotkey activation, app launching, and error conditions
+- Comprehensive debugging information for troubleshooting user-reported issues
+- Easy sharing with developers via exported ZIP file
+
+**Logging Integration**
+- All major components (HotkeyManager, ConfigurationManager, main app) fully instrumented
+- Key events logged: accessibility permissions, hotkey registration, double-shift detection, app activation
+- Error conditions captured: failed app launches, accessibility permission denials, configuration errors
+- Performance tracking: timing information for double-shift detection and selector overlays
+
 ## Build Requirements
 
 - macOS 15.4+
@@ -125,6 +148,7 @@ Pluck is a macOS menu bar utility for creating customizable global hotkeys to qu
 ## Development History
 
 ### Recent Improvements
+- **Exact App Name Matching**: Fixed app name resolution to prefer exact matches over partial matches, preventing "Notion" from opening "Notion Calendar"
 - **Command+Tab Training Mode**: Optional Command+Tab disabling to train users to use pluck hotkeys instead
 - **Double-Shift Activation**: Optional alternative hotkey activation using two quick shift presses
 - **Press/Release Cycle Detection**: Double-shift now requires complete key press/release cycles to prevent accidental activation from holding shift

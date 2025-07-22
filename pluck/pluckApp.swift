@@ -14,6 +14,7 @@ struct pluckApp: App {
     @State private var configWindowController: NSWindowController?
     
     init() {
+        logInfo("Pluck app initializing")
         let manager = HotkeyManager()
         let config = ConfigurationManager()
         
@@ -46,9 +47,16 @@ struct pluckApp: App {
                 Label("Report Bug", systemImage: "ladybug")
             }
             
+            Button(action: {
+                exportLogs()
+            }) {
+                Label("Export Logs", systemImage: "doc.on.doc")
+            }
+            
             Divider()
             
             Button(action: {
+                logInfo("User quit app from menu")
                 NSApplication.shared.terminate(nil)
             }) {
                 Label("Quit Pluck", systemImage: "power")
@@ -59,6 +67,7 @@ struct pluckApp: App {
     }
     
     private func showConfigurationWindow() {
+        logInfo("Opening configuration window")
         // Close existing window if open
         configWindowController?.close()
         
@@ -84,5 +93,70 @@ struct pluckApp: App {
         // Bring window to front
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+    }
+    
+    private func exportLogs() {
+        logInfo("User requested log export")
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let zipFileURL = Logger.shared.exportLogs() else {
+                DispatchQueue.main.async {
+                    self.showExportError()
+                }
+                return
+            }
+            
+            DispatchQueue.main.async {
+                let savePanel = NSSavePanel()
+                savePanel.title = "Export Pluck Logs"
+                savePanel.nameFieldStringValue = zipFileURL.lastPathComponent
+                savePanel.allowedContentTypes = [.zip]
+                savePanel.canCreateDirectories = true
+                
+                let response = savePanel.runModal()
+                if response == .OK {
+                    if let destinationURL = savePanel.url {
+                        do {
+                            // Remove file if it exists
+                            if FileManager.default.fileExists(atPath: destinationURL.path) {
+                                try FileManager.default.removeItem(at: destinationURL)
+                            }
+                            try FileManager.default.moveItem(at: zipFileURL, to: destinationURL)
+                            logInfo("Logs exported to: \(destinationURL.path)")
+                            self.showExportSuccess(at: destinationURL)
+                        } catch {
+                            logError("Failed to save exported logs: \(error)")
+                            self.showExportError()
+                        }
+                    }
+                } else {
+                    // Clean up temp file if user cancelled
+                    try? FileManager.default.removeItem(at: zipFileURL)
+                }
+            }
+        }
+    }
+    
+    private func showExportSuccess(at url: URL) {
+        let alert = NSAlert()
+        alert.messageText = "Logs Exported Successfully"
+        alert.informativeText = "Your Pluck logs have been exported to:\n\(url.path)\n\nYou can now send this file to the developer for debugging."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Show in Finder")
+        alert.addButton(withTitle: "OK")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
+        }
+    }
+    
+    private func showExportError() {
+        let alert = NSAlert()
+        alert.messageText = "Export Failed"
+        alert.informativeText = "Unable to export logs. Please try again or contact support."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 }

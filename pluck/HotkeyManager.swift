@@ -20,6 +20,7 @@ class HotkeyManager: ObservableObject {
     
     func setConfigurationManager(_ configManager: ConfigurationManager) {
         self.configManager = configManager
+        logInfo("Configuration manager set")
     }
     
     // Event tap callback for consuming events system-wide
@@ -44,12 +45,12 @@ class HotkeyManager: ObservableObject {
     
     func registerHotkey() {
         // Check if we have accessibility permissions
-        print("Checking accessibility permissions...")
+        logInfo("Checking accessibility permissions...")
         let trusted = AXIsProcessTrusted()
-        print("AXIsProcessTrusted result: \(trusted)")
+        logInfo("AXIsProcessTrusted result: \(trusted)")
         
         if !trusted {
-            print("Accessibility permissions not granted. Requesting...")
+            logWarning("Accessibility permissions not granted. Requesting...")
             
             // Show informational popup when permissions are missing
             showAccessibilityMissingPopup()
@@ -57,12 +58,12 @@ class HotkeyManager: ObservableObject {
             // Request accessibility permissions
             let options: CFDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
             let accessEnabled = AXIsProcessTrustedWithOptions(options)
-            print("AXIsProcessTrustedWithOptions result: \(accessEnabled)")
+            logInfo("AXIsProcessTrustedWithOptions result: \(accessEnabled)")
             
             if !accessEnabled {
-                print("User needs to grant accessibility permissions in System Preferences")
-                print("Since running from Xcode, add 'Xcode' to System Preferences > Security & Privacy > Privacy > Accessibility")
-                print("You may also need to add the built app itself when it appears in the list")
+                logError("User needs to grant accessibility permissions in System Preferences")
+                logInfo("Since running from Xcode, add 'Xcode' to System Preferences > Security & Privacy > Privacy > Accessibility")
+                logInfo("You may also need to add the built app itself when it appears in the list")
                 return
             }
         }
@@ -81,7 +82,7 @@ class HotkeyManager: ObservableObject {
         )
         
         guard let eventTap = eventTap else {
-            print("Failed to create event tap - accessibility permissions may be required")
+            logError("Failed to create event tap - accessibility permissions may be required")
             return
         }
         
@@ -92,19 +93,20 @@ class HotkeyManager: ObservableObject {
         
         // Keep local monitor for when our own app is focused (as backup)
         localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
-            print("Local key event: keyCode=\(event.keyCode), modifiers=\(event.modifierFlags), type=\(event.type.rawValue)")
+            logDebug("Local key event: keyCode=\(event.keyCode), modifiers=\(event.modifierFlags), type=\(event.type.rawValue)")
             let shouldConsume = self.handleKeyEvent(event: event)
             return shouldConsume ? nil : event
         }
         
         if let configManager = configManager {
-            print("Hotkey monitoring registered for \(configManager.pluckKey.displayText)+[character keys]")
+            logInfo("Hotkey monitoring registered for \(configManager.pluckKey.displayText)+[character keys]")
         } else {
-            print("Hotkey monitoring registered (no configuration manager)")
+            logWarning("Hotkey monitoring registered (no configuration manager)")
         }
     }
     
     func unregisterHotkey() {
+        logInfo("Unregistering hotkey monitoring")
         if let eventTap = eventTap {
             CGEvent.tapEnable(tap: eventTap, enable: false)
             CFMachPortInvalidate(eventTap)
@@ -125,29 +127,29 @@ class HotkeyManager: ObservableObject {
     private func showSelectorOverlay(isDoubleShiftMode: Bool) {
         guard let configManager = configManager else { return }
         
-        print("HotkeyManager: showSelectorOverlay called, isDoubleShiftMode: \(isDoubleShiftMode)")
+        logDebug("showSelectorOverlay called, isDoubleShiftMode: \(isDoubleShiftMode)")
         DispatchQueue.main.async {
             // Only hide existing overlay if there is one
             if self.overlayWindowController != nil {
-                print("HotkeyManager: Hiding existing overlay")
+                logDebug("Hiding existing overlay")
                 self.overlayWindowController?.hide()
                 self.overlayWindowController = nil
             }
             
-            print("HotkeyManager: Creating new overlay with \(configManager.hotkeyBindings.count) bindings")
+            logDebug("Creating new overlay with \(configManager.hotkeyBindings.count) bindings")
             self.overlayWindowController = SelectorOverlayWindowController(
                 hotkeyBindings: configManager.hotkeyBindings,
                 isDoubleShiftMode: isDoubleShiftMode
             )
-            print("HotkeyManager: Calling show on overlay")
+            logDebug("Calling show on overlay")
             self.overlayWindowController?.show()
         }
     }
     
     private func hideSelectorOverlay() {
-        print("HotkeyManager: hideSelectorOverlay called")
+        logDebug("hideSelectorOverlay called")
         DispatchQueue.main.async {
-            print("HotkeyManager: On main queue, hiding overlay")
+            logDebug("On main queue, hiding overlay")
             self.overlayWindowController?.hide()
             self.overlayWindowController = nil
         }
@@ -156,7 +158,7 @@ class HotkeyManager: ObservableObject {
     private func startSelectorTimeout() {
         cancelSelectorTimeout()
         selectorTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
-            print("HotkeyManager: Selector timeout - resetting double-shift state")
+            logDebug("Selector timeout - resetting double-shift state")
             self?.isWaitingForSelector = false
             self?.hideSelectorOverlay()
             self?.selectorTimeoutTimer = nil
@@ -169,6 +171,7 @@ class HotkeyManager: ObservableObject {
     }
     
     private func showAccessibilityMissingPopup() {
+        logWarning("Showing accessibility permissions popup")
         DispatchQueue.main.async {
             let alert = NSAlert()
             alert.messageText = "Accessibility Permissions Required"
@@ -179,10 +182,13 @@ class HotkeyManager: ObservableObject {
             
             let response = alert.runModal()
             if response == .alertFirstButtonReturn {
+                logInfo("User chose to open settings and quit")
                 // Open System Preferences to Accessibility section
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
                 // Then quit the application
                 NSApplication.shared.terminate(nil)
+            } else {
+                logInfo("User cancelled accessibility permissions request")
             }
         }
     }
@@ -190,7 +196,7 @@ class HotkeyManager: ObservableObject {
     @discardableResult
     private func handleKeyEvent(event: NSEvent) -> Bool {
         guard let configManager = configManager else {
-            print("No configuration manager available")
+            logWarning("No configuration manager available")
             return false
         }
         
@@ -201,7 +207,7 @@ class HotkeyManager: ObservableObject {
         
         // Debug: Log all key events when double-shift is enabled
         if configManager.isDoubleShiftEnabled {
-            print("Key event: keyCode=\(keyCode), type=\(eventType.rawValue), modifiers=\(modifierFlags), time=\(currentTime), lastShiftTime=\(lastShiftPressTime), timeDiff=\(currentTime - lastShiftPressTime)")
+            logDebug("Key event: keyCode=\(keyCode), type=\(eventType.rawValue), modifiers=\(modifierFlags), time=\(currentTime), lastShiftTime=\(lastShiftPressTime), timeDiff=\(currentTime - lastShiftPressTime)")
         }
         
         // Check for double-shift activation (left shift: 56, right shift: 60)
@@ -210,25 +216,25 @@ class HotkeyManager: ObservableObject {
             if modifierFlags.contains(.shift) {
                 // Shift key pressed down
                 if !isShiftCurrentlyPressed {
-                    print("Shift press started")
+                    logDebug("Shift press started")
                     isShiftCurrentlyPressed = true
                 }
             } else {
                 // Shift key released - this counts as one "shift press"
                 if isShiftCurrentlyPressed {
-                    print("Shift released. Current time: \(currentTime), Last shift time: \(lastShiftPressTime), Diff: \(currentTime - lastShiftPressTime)")
+                    logDebug("Shift released. Current time: \(currentTime), Last shift time: \(lastShiftPressTime), Diff: \(currentTime - lastShiftPressTime)")
                     isShiftCurrentlyPressed = false
                     
                     if currentTime - lastShiftPressTime <= doubleShiftThreshold && lastShiftPressTime > 0 {
                         // Double-shift detected
-                        print("Double-shift detected! Waiting for selector key...")
+                        logInfo("Double-shift detected! Waiting for selector key...")
                         isWaitingForSelector = true
                         lastShiftPressTime = 0 // Reset to prevent triple-shift issues
                         showSelectorOverlay(isDoubleShiftMode: true)
                         startSelectorTimeout()
                         return true
                     } else {
-                        print("First shift or too slow, recording time")
+                        logDebug("First shift or too slow, recording time")
                         lastShiftPressTime = currentTime
                     }
                 }
@@ -241,7 +247,7 @@ class HotkeyManager: ObservableObject {
         // Handle ESC key to reset double-shift state and dismiss any overlay
         if configManager.isDoubleShiftEnabled && eventType == .keyDown && keyCode == 53 { // Escape key
             if lastShiftPressTime > 0 || isWaitingForSelector || isShiftCurrentlyPressed {
-                print("ESC pressed, resetting double-shift state")
+                logInfo("ESC pressed, resetting double-shift state")
                 lastShiftPressTime = 0
                 isShiftCurrentlyPressed = false
                 if isWaitingForSelector {
@@ -256,7 +262,7 @@ class HotkeyManager: ObservableObject {
         // Reset double-shift timing if any non-shift key is pressed
         if configManager.isDoubleShiftEnabled && eventType == .keyDown && keyCode != 56 && keyCode != 60 {
             if lastShiftPressTime > 0 || isShiftCurrentlyPressed {
-                print("Non-shift key pressed, resetting double-shift timing")
+                logDebug("Non-shift key pressed, resetting double-shift timing")
                 lastShiftPressTime = 0
                 isShiftCurrentlyPressed = false
             }
@@ -279,7 +285,7 @@ class HotkeyManager: ObservableObject {
         
         // Handle Command+Tab disabling if enabled
         if configManager.isCommandTabDisabled && eventType == .keyDown && keyCode == 48 && modifierFlags.contains(.command) { // Tab key (48) with Command
-            print("Command+Tab blocked to encourage pluck hotkey usage")
+            logInfo("Command+Tab blocked to encourage pluck hotkey usage")
             return true // Consume the event to block Command+Tab
         }
         
@@ -296,17 +302,17 @@ class HotkeyManager: ObservableObject {
         
         // Find the character for this key code
         guard let character = KeyMapping.shared.character(for: keyCode) else {
-            print("No character mapping found for keyCode: \(keyCode)")
+            logDebug("No character mapping found for keyCode: \(keyCode)")
             return false
         }
         
         // Find binding for this character
         if let binding = configManager.hotkeyBindings.first(where: { $0.selectorCharacter == character }) {
-            print("Hotkey detected for '\(character)'! Focusing \(binding.appName)...")
+            logInfo("Hotkey detected for '\(character)'! Focusing \(binding.appName)...")
             focusApp(binding: binding)
             return true
         } else {
-            print("No binding found for character: '\(character)' (keyCode: \(keyCode))")
+            logDebug("No binding found for character: '\(character)' (keyCode: \(keyCode))")
             return false
         }
     }
@@ -336,17 +342,17 @@ class HotkeyManager: ObservableObject {
             }
         }
         
-        print("Found \(targetApps.count) matching apps for \(binding.appName)")
+        logDebug("Found \(targetApps.count) matching apps for \(binding.appName)")
         
         if let targetApp = targetApps.first {
-            print("Activating \(binding.appName)...")
+            logInfo("Activating \(binding.appName)...")
             
             // Use NSWorkspace to activate the running app directly
             let success = targetApp.activate(options: [.activateIgnoringOtherApps])
             if success {
-                print("Successfully activated \(binding.appName)")
+                logInfo("Successfully activated \(binding.appName)")
             } else {
-                print("Failed to activate \(binding.appName), trying alternative approach...")
+                logWarning("Failed to activate \(binding.appName), trying alternative approach...")
                 // Alternative: try to launch which will also activate
                 if let bundleId = binding.bundleIdentifier,
                    let appURL = workspace.urlForApplication(withBundleIdentifier: bundleId) {
@@ -358,18 +364,18 @@ class HotkeyManager: ObservableObject {
                 }
             }
         } else {
-            print("\(binding.appName) not running, trying to launch...")
+            logInfo("\(binding.appName) not running, trying to launch...")
             
             // Try to launch app if it's not running
             if let bundleId = binding.bundleIdentifier,
                let appURL = workspace.urlForApplication(withBundleIdentifier: bundleId) {
-                print("Found \(binding.appName) at: \(appURL)")
+                logDebug("Found \(binding.appName) at: \(appURL)")
                 let configuration = NSWorkspace.OpenConfiguration()
                 configuration.activates = true
                 workspace.openApplication(at: appURL, configuration: configuration) { _, _ in }
             } else {
                 // Fallback to name-based launch - try to find exact app name in Applications
-                print("Trying to launch by name: \(binding.appName)")
+                logDebug("Trying to launch by name: \(binding.appName)")
                 let appSearchPaths = ["/Applications", "/System/Applications"]
                 var foundApp = false
                 
@@ -377,7 +383,7 @@ class HotkeyManager: ObservableObject {
                     let exactAppPath = "\(searchPath)/\(binding.appName).app"
                     if FileManager.default.fileExists(atPath: exactAppPath) {
                         if let appURL = URL(string: "file://\(exactAppPath)") {
-                            print("Found exact app at: \(exactAppPath)")
+                            logDebug("Found exact app at: \(exactAppPath)")
                             let configuration = NSWorkspace.OpenConfiguration()
                             configuration.activates = true
                             workspace.openApplication(at: appURL, configuration: configuration) { _, _ in }
@@ -389,7 +395,7 @@ class HotkeyManager: ObservableObject {
                 
                 if !foundApp {
                     // Final fallback to NSWorkspace.launchApplication
-                    print("Using NSWorkspace.launchApplication as final fallback")
+                    logDebug("Using NSWorkspace.launchApplication as final fallback")
                     workspace.launchApplication(binding.appName)
                 }
             }
@@ -404,17 +410,17 @@ class HotkeyManager: ObservableObject {
             app.localizedName?.lowercased().contains("messages") == true
         }
         
-        print("Found Messages apps: \(messagesApps.map { $0.localizedName ?? "Unknown" })")
+        logDebug("Found Messages apps: \(messagesApps.map { $0.localizedName ?? "Unknown" })")
         
         if let messagesApp = messagesApps.first {
-            print("Activating Messages app...")
+            logInfo("Activating Messages app...")
             
             // Use NSWorkspace to activate the running app directly
             let success = messagesApp.activate(options: [.activateIgnoringOtherApps])
             if success {
-                print("Successfully activated Messages")
+                logInfo("Successfully activated Messages")
             } else {
-                print("Failed to activate Messages, trying alternative approach...")
+                logWarning("Failed to activate Messages, trying alternative approach...")
                 // Alternative: try to launch which will also activate
                 if let messagesURL = workspace.urlForApplication(withBundleIdentifier: "com.apple.MobileSMS") {
                     let configuration = NSWorkspace.OpenConfiguration()
@@ -425,20 +431,21 @@ class HotkeyManager: ObservableObject {
                 }
             }
         } else {
-            print("Messages not running, trying to launch...")
+            logInfo("Messages not running, trying to launch...")
             // Try to launch Messages if it's not running
             if let messagesURL = workspace.urlForApplication(withBundleIdentifier: "com.apple.MobileSMS") {
-                print("Found Messages at: \(messagesURL)")
+                logDebug("Found Messages at: \(messagesURL)")
                 let configuration = NSWorkspace.OpenConfiguration()
                 configuration.activates = true
                 workspace.openApplication(at: messagesURL, configuration: configuration) { _, _ in }
             } else {
-                print("Could not find Messages app")
+                logError("Could not find Messages app")
             }
         }
     }
     
     deinit {
+        logInfo("HotkeyManager deinit")
         unregisterHotkey()
     }
 }
