@@ -327,6 +327,8 @@ class HotkeyManager: ObservableObject {
             targetApps = workspace.runningApplications.filter { $0.bundleIdentifier == bundleId }
         }
         
+        logDebug(workspace.runningApplications.map(\.localizedName!).joined(separator: "\n"))
+        
         // Fallback to name-based search with exact match priority
         if targetApps.isEmpty {
             // First try exact match
@@ -334,11 +336,12 @@ class HotkeyManager: ObservableObject {
                 app.localizedName?.lowercased() == binding.appName.lowercased()
             }
             
-            // If no exact match, fallback to contains match
+            if !targetApps.isEmpty {
+                logDebug("Found an exact match")
+            }
+            
             if targetApps.isEmpty {
-                targetApps = workspace.runningApplications.filter { app in
-                    app.localizedName?.lowercased().contains(binding.appName.lowercased()) == true
-                }
+                logDebug("Could not find exact match")
             }
         }
         
