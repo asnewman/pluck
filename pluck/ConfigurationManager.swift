@@ -33,7 +33,7 @@ class ConfigurationManager: ObservableObject {
     @Published var pluckKey = PluckKeyConfiguration()
     @Published var isDoubleShiftEnabled = false
     @Published var isCommandTabDisabled = false
-    
+
     private let userDefaults = UserDefaults.standard
     private let bindingsKey = "HotkeyBindings"
     private let pluckKeyKey = "PluckKeyConfiguration"
@@ -117,7 +117,7 @@ class ConfigurationManager: ObservableObject {
         
         // Save double-shift setting
         userDefaults.set(isDoubleShiftEnabled, forKey: doubleShiftKey)
-        
+
         // Save command+tab disabled setting
         userDefaults.set(isCommandTabDisabled, forKey: commandTabDisabledKey)
     }
@@ -149,7 +149,7 @@ class ConfigurationManager: ObservableObject {
         // Load double-shift setting
         isDoubleShiftEnabled = userDefaults.bool(forKey: doubleShiftKey)
         logDebug("Double-shift enabled: \(isDoubleShiftEnabled)")
-        
+
         // Load command+tab disabled setting
         isCommandTabDisabled = userDefaults.bool(forKey: commandTabDisabledKey)
         logDebug("Command+Tab disabled: \(isCommandTabDisabled)")

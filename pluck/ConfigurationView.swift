@@ -127,10 +127,10 @@ struct ConfigurationView: View {
                                 configManager.updateCommandTabDisabled(newValue)
                             }
                         ))
-                        
+
                         Spacer()
                     }
-                    
+
                     if configManager.isCommandTabDisabled {
                         Text("Command+Tab will be blocked to encourage using pluck hotkeys instead")
                             .font(.caption)
@@ -139,7 +139,7 @@ struct ConfigurationView: View {
                 }
                 .padding(16)
             }
-            
+
             // Current bindings list
             GroupBox("Current Hotkeys") {
                 if configManager.hotkeyBindings.isEmpty {

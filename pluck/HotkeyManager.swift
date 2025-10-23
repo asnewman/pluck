@@ -349,9 +349,10 @@ class HotkeyManager: ObservableObject {
         
         if let targetApp = targetApps.first {
             logInfo("Activating \(binding.appName)...")
-            
+
             // Use NSWorkspace to activate the running app directly
-            let success = targetApp.activate(options: [.activateIgnoringOtherApps])
+            // Always show all windows (like clicking in dock)
+            let success = targetApp.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
             if success {
                 logInfo("Successfully activated \(binding.appName)")
             } else {
